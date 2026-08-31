@@ -458,7 +458,7 @@ export const countMatchedRouteHits = (entries = []) => {
   const hitCounts = {};
 
   for (const entry of entries) {
-    if (!entry?.matched) {
+    if (!entry?.matched || entry.error) {
       continue;
     }
 
