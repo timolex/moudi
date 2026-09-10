@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import path from 'utils/common/path';
 import { useDispatch } from 'react-redux';
-import { get, cloneDeep } from 'lodash';
+import useClearStoredRunnerExchanges from 'hooks/useClearStoredRunnerExchanges';
+import { get } from 'lodash';
 import { runCollectionFolder, cancelRunnerExecution, mountCollection, updateRunnerConfiguration } from 'providers/ReduxStore/slices/collections/actions';
 import { resetCollectionRunner } from 'providers/ReduxStore/slices/collections';
 import { findItemInCollection, getTotalRequestCountInCollection, areItemsLoading } from 'utils/collections';
@@ -93,7 +94,9 @@ export default function RunnerResults({ collection }) {
   // ref for the runner output body
   const runnerBodyRef = useRef();
 
-  const collectionCopy = cloneDeep(collection);
+  const clearStoredRunnerExchanges = useClearStoredRunnerExchanges(collection.uid);
+
+  const collectionCopy = collection;
   const runnerInfo = get(collection, 'runnerResult.info', {});
 
   // tags for the collection run
@@ -102,7 +105,7 @@ export default function RunnerResults({ collection }) {
   // have tags been added for the collection run
   const areTagsAdded = tags.include.length > 0 || tags.exclude.length > 0;
 
-  const items = cloneDeep(get(collection, 'runnerResult.items', []))
+  const items = get(collection, 'runnerResult.items', [])
     .map((item) => {
       const info = findItemInCollection(collectionCopy, item.uid);
       if (!info) {
@@ -192,13 +195,14 @@ export default function RunnerResults({ collection }) {
     }));
   };
 
-  const runCollection = () => {
+  const runCollection = async () => {
     const savedOrder = get(collection, 'runnerConfiguration.requestItemsOrder', selectedRequestItems);
     dispatch(updateRunnerConfiguration(collection.uid, selectedRequestItems, savedOrder, delay));
+    await clearStoredRunnerExchanges();
     dispatch(runCollectionFolder(collection.uid, null, true, Number(delay), tags, selectedRequestItems));
   };
 
-  const runAgain = () => {
+  const runAgain = async () => {
     ensureCollectionIsMounted();
     isReRunningRef.current = true;
 
@@ -210,6 +214,7 @@ export default function RunnerResults({ collection }) {
       savedConfiguration
     });
 
+    await clearStoredRunnerExchanges();
     dispatch(
       runCollectionFolder(
         collection.uid,
@@ -224,6 +229,7 @@ export default function RunnerResults({ collection }) {
 
   const resetRunner = () => {
     isReRunningRef.current = false;
+    clearStoredRunnerExchanges();
     dispatch(
       resetCollectionRunner({
         collectionUid: collection.uid
@@ -449,7 +455,7 @@ export default function RunnerResults({ collection }) {
                     <ul className="pl-8">
                       {item.preRequestTestResults
                         ? filterTestResults(item.preRequestTestResults).map((result) => (
-                            <li key={result.uid}>
+                            <li key={result.uid} data-testid={result.status === 'pass' ? 'runner-test-row-passed' : 'runner-test-row-failed'}>
                               {result.status === 'pass' ? (
                                 <span className="test-success flex items-center">
                                   <IconCheck size={18} strokeWidth={2} className="mr-2" />
@@ -469,7 +475,7 @@ export default function RunnerResults({ collection }) {
                         : null}
                       {item.postResponseTestResults
                         ? filterTestResults(item.postResponseTestResults).map((result) => (
-                            <li key={result.uid}>
+                            <li key={result.uid} data-testid={result.status === 'pass' ? 'runner-test-row-passed' : 'runner-test-row-failed'}>
                               {result.status === 'pass' ? (
                                 <span className="test-success flex items-center">
                                   <IconCheck size={18} strokeWidth={2} className="mr-2" />
@@ -489,7 +495,7 @@ export default function RunnerResults({ collection }) {
                         : null}
                       {item.testResults
                         ? filterTestResults(item.testResults).map((result) => (
-                            <li key={result.uid}>
+                            <li key={result.uid} data-testid={result.status === 'pass' ? 'runner-test-row-passed' : 'runner-test-row-failed'}>
                               {result.status === 'pass' ? (
                                 <span className="test-success flex items-center">
                                   <IconCheck size={18} strokeWidth={2} className="mr-2" />
@@ -508,7 +514,7 @@ export default function RunnerResults({ collection }) {
                           ))
                         : null}
                       {filterTestResults(item.assertionResults).map((result) => (
-                        <li key={result.uid}>
+                        <li key={result.uid} data-testid={result.status === 'pass' ? 'runner-test-row-passed' : 'runner-test-row-failed'}>
                           {result.status === 'pass' ? (
                             <span className="test-success flex items-center">
                               <IconCheck size={18} strokeWidth={2} className="mr-2" />
